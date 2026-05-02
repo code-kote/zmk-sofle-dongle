@@ -1,5 +1,15 @@
+// ============================================================
+// Sofle (Eyelash) keymap — 9 слоёв
+// Слои 0-4: рабочие (редактируются в ZMK Studio)
+// Слои 5-8: зарезервированы для ZMK Studio (status = "reserved")
+//           в обычной прошивке не занимают RAM,
+//           в Studio-сборке становятся доступными
+// ============================================================
+// --- Настройки скорости мыши ---
+// Увеличенные значения относительно стандартных (600 и 10)
+
 #define ZMK_POINTING_DEFAULT_MOVE_VAL 1200  // 600
-#define ZMK_POINTING_DEFAULT_SCRL_VAL 35    // 10
+#define ZMK_POINTING_DEFAULT_SCRL_VAL 25   // 10
 
 #include <input/processors.dtsi>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
@@ -10,32 +20,40 @@
 #include <dt-bindings/zmk/pointing.h>
 #include <dt-bindings/zmk/rgb.h>
 
-/ {
-    zip_scroll_scaler: zip_scroll_scaler {
-        compatible = "zmk,input-processor-scaler";
-        #input-processor-cells = <2>;
-        type = <INPUT_EV_REL>;
-        codes = <INPUT_REL_WHEEL INPUT_REL_HWHEEL>;
-        track-remainders;
-    };
-};
+// --- Масштабирование движения мыши и скролла ---
 
 &mmv_input_listener { input-processors = <&zip_xy_scaler 2 1>; };
 
 &msc_input_listener { input-processors = <&zip_scroll_scaler 2 1>; };
 
+// --- Физика скролла: быстрый старт, без задержки ---
+
 &msc {
-    acceleration-exponent = <0>;      // 0
-    time-to-max-speed-ms = <0>;       // 300
-    delay-ms = <0>;                   // 0
+    acceleration-exponent = <1>;
+    time-to-max-speed-ms = <100>;
+    delay-ms = <0>;
 };
 
+// --- Физика движения курсора: плавный разгон за 500мс ---
+
 &mmv {
-    time-to-max-speed-ms = <400>;
+    time-to-max-speed-ms = <500>;
     acceleration-exponent = <1>;
+    trigger-period-ms = <16>;
+};
+
+// --- Soft Off: нужно держать комбо 2 секунды ---
+
+&soft_off { hold-time-ms = <2000>; };
+
+&lt {
+    bindings = <&kp>, <&kp>;
 };
 
 / {
+    // --- Поведение энкодера: скролл вверх/вниз ---
+    // Используется на слоях 1 и 2 вместо регулировки громкости
+
     scroll_encoder: scroll_encoder {
         compatible = "zmk,behavior-sensor-rotate";
         #sensor-binding-cells = <0>;
@@ -44,8 +62,50 @@
         tap-ms = <100>;
     };
 
+    TDADJ: TDADJ {
+        compatible = "zmk,behavior-tap-dance";
+        label = "TDADJ";
+        #binding-cells = <0>;
+        bindings = <&kp ESC>, <&sl 3>, <&none>, <&none>, <&none>;
+    };
+
+    behaviors {
+        // Здесь можно добавлять свои кастомные behaviors:
+        // hold-tap, tap-dance, mod-morph и т.д.
+        // Пример hold-tap (раскомментируй и настрой по вкусу):
+        //
+        // hm: homerow_mods {
+        //     compatible = "zmk,behavior-hold-tap";
+        //     #binding-cells = <2>;
+        //     tapping-term-ms = <200>;
+        //     quick-tap-ms = <0>;
+        //     flavor = "tap-preferred";
+        //     bindings = <&kp>, <&kp>;
+        // };
+    };
+
+    combos {
+        compatible = "zmk,combos";
+
+        // Комбо Q+S+Z (позиции 14, 28, 40) = Soft Off
+        // Нужно держать 2 секунды (настроено выше в &soft_off)
+
+        softoff {
+            bindings = <&soft_off>;
+            key-positions = <14 28 40>;
+        };
+
+        NP_L {
+            bindings = <&tog 2>;
+            key-positions = <57 56>;
+        };
+    };
+
     macros {
-        shift_MB3: shift_MB3 {
+        // Макрос: одновременно Shift + средняя кнопка мыши
+        // Можно назначить на любую клавишу через ZMK Studio
+
+        SHIFT_MCLK: SHIFT_MCLK {
             compatible = "zmk,behavior-macro";
             #binding-cells = <0>;
             bindings =
@@ -55,58 +115,86 @@
                 <&mkp MB3>,
                 <&macro_pause_for_release>,
                 <&macro_release>,
-                <&mkp MB3 &kp LEFT_SHIFT>;
+                <&kp LEFT_SHIFT &mkp MB3>;
 
-            label = "SHIFT_MB3";
+            label = "SHIFT_MCLK";
         };
-    };
-
-    behaviors {
     };
 
     keymap {
         compatible = "zmk,keymap";
 
-        layer0 {
+        // ====================================================
+        // СЛОЙ 0 — Базовый (всегда активен)
+        // Стандартная QWERTY раскладка
+        // mo 1 = левый большой палец = временно слой 1
+        // mo 2 = правый большой палец = временно слой 2
+        // ====================================================
+
+        Main {
             bindings = <
-&kp ESC     &kp N1     &kp N2        &kp N3        &kp N4  &kp N5       &kp UP_ARROW     &kp N6     &kp N7     &kp N8     &kp N9           &kp N0      &kp BACKSPACE
-&kp TAB     &kp Q      &kp W         &kp E         &kp R   &kp T        &kp DOWN_ARROW   &kp Y      &kp U      &kp I      &kp O            &kp P       &kp BSLH
-&kp CAPS    &kp A      &kp S         &kp D         &kp F   &kp G        &kp LEFT_ARROW   &kp H      &kp J      &kp K      &kp L            &kp SEMI    &kp APOS
-&kp LSHFT   &kp Z      &kp X         &kp C         &kp V   &kp B        &kp RIGHT_ARROW  &kp N      &kp M      &kp COMMA  &kp DOT          &kp FSLH    &kp ENTER
-&kp C_MUTE  &kp LCTRL  &kp LEFT_GUI  &kp LEFT_ALT  &mo 1   &kp SPACE    &kp ENTER        &kp SPACE  &kp ENTER  &mo 2      &kp RIGHT_SHIFT  &kp DELETE
+&TDADJ          &kp N1          &kp N2          &kp N3            &kp N4       &kp N5       &none  &kp N6     &kp N7       &kp N8            &kp N9           &kp N0              &mt BACKSPACE BACKSLASH
+&kp TAB         &kp Q           &kp W           &kp E             &kp R        &kp T        &none  &kp Y      &kp U        &kp I             &kp O            &kp P               &kp SLASH
+&kp LEFT_SHIFT  &mt LEFT_GUI A  &mt LEFT_ALT S  &mt LEFT_SHIFT D  &mt LCTRL F  &kp G        &none  &kp H      &mt RCTRL J  &mt LEFT_SHIFT K  &mt RIGHT_ALT L  &mt RIGHT_GUI SEMI  &kp APOS
+&kp LCTRL       &kp Z           &kp X           &kp C             &kp V        &kp B        &none  &kp N      &kp M        &kp COMMA         &kp DOT          &kp LEFT_BRACKET    &kp RIGHT_BRACKET
+&none           &mo 4           &lt 1 LEFT_GUI  &kp BACKSPACE     &kp RET      &kp SPACE    &none  &kp SPACE  &kp ENTER    &kp BACKSPACE     &lt 1 RIGHT_GUI  &mo 4
             >;
-            sensor-bindings = <&scroll_encoder>;
-           
-            display-name = "LAYER0";
+
+            display-name = "Main";
         };
 
-        layer_1 {
+        Navigation {
             bindings = <
-&kp GRAVE   &kp F1           &kp F2          &kp F3           &kp F4           &kp F5             &mmv MOVE_UP     &kp F6           &kp F7           &kp F8      &kp F9     &kp F10           &trans
-&trans      &kp GRAVE        &mkp LCLK       &mkp MCLK        &mkp RCLK        &mkp MB4           &mmv MOVE_DOWN   &kp PG_UP        &kp END          &kp UP      &kp HOME   &kp MINUS         &kp EQUAL
-&trans      &kp TILDE        &trans          &trans           &trans           &mkp MB5           &mmv MOVE_LEFT   &kp PG_DN        &kp LEFT         &kp DOWN    &kp RIGHT  &kp LEFT_BRACKET  &kp RIGHT_BRACKET
-&trans      &rgb_ug RGB_OFF  &rgb_ug RGB_ON  &rgb_ug RGB_EFF  &rgb_ug RGB_EFR  &rgb_ug RGB_SPI    &mmv MOVE_RIGHT  &rgb_ug RGB_BRI  &rgb_ug RGB_BRD  &kp INSERT  &kp F11    &kp F12           &trans
-&kp C_MUTE  &trans           &trans          &trans           &trans           &trans             &mkp LCLK        &trans           &trans           &trans      &trans     &trans
+&kp MINUS  &trans  &trans    &trans    &trans     &trans    &none  &trans  &trans    &trans                    &trans     &trans  &kp EQUAL
+&trans     &trans  &trans    &kp UP    &trans     &trans    &none  &trans  &trans    &mt K_SCROLL_UP UP_ARROW  &trans     &trans  &trans
+&trans     &trans  &kp LEFT  &kp DOWN  &kp RIGHT  &trans    &none  &trans  &kp LEFT  &kp DOWN                  &kp RIGHT  &trans  &trans
+&trans     &trans  &trans    &trans    &trans     &trans    &none  &trans  &trans    &trans                    &trans     &trans  &trans
+&none      &trans  &to 0     &trans    &trans     &trans    &none  &trans  &trans    &trans                    &to 0      &trans
             >;
 
-            display-name = "layer1";
-            sensor-bindings = <&inc_dec_kp C_VOLUME_UP C_VOL_DN>;
-            
-        };
-
-        layer_2 {
-            bindings = <
-&kp TILDE  &bt BT_SEL 0  &bt BT_SEL 1    &bt BT_SEL 2  &bt BT_SEL 3  &bt BT_SEL 4    &mmv MOVE_UP     &kp F6  &kp F7  &kp F8      &kp F9     &kp F10      &trans
-&trans     &bt BT_CLR    &bt BT_CLR_ALL  &trans        &trans        &trans          &mmv MOVE_DOWN   &trans  &trans  &kp F11     &kp F12    &kp UNDER    &kp PLUS
-&trans     &out OUT_USB  &out OUT_BLE    &trans        &trans        &trans          &mmv MOVE_LEFT   &trans  &trans  &trans      &trans     &kp LBRC     &kp RBRC
-&trans     &sys_reset    &trans          &bootloader   &trans        &trans          &mmv MOVE_RIGHT  &trans  &trans  &sys_reset  &soft_off  &bootloader  &trans
-&trans     &trans        &trans          &trans        &trans        &trans          &mkp LCLK        &trans  &trans  &trans      &trans     &trans
-            >;
-
+            display-name = "Navigation";
             sensor-bindings = <&scroll_encoder>;
         };
 
-        layer_3 {
+        NumPad {
+            bindings = <
+&kp F24  &kp F1   &kp F2           &kp F3   &kp F4   &kp F5     &trans  &trans   &kp KP_NUM  &kp ASTERISK   &kp SLASH  &kp KP_PLUS   &kp HOME
+&trans   &kp F6   &kp F7           &kp F8   &kp F9   &kp F10    &trans  &trans   &kp KP_N7   &kp KP_N8      &kp KP_N9  &kp KP_MINUS  &kp PG_UP
+&trans   &kp F11  &kp F12          &kp F13  &kp F14  &kp F15    &trans  &trans   &kp KP_N6   &kp KP_N5      &kp KP_N4  &kp KP_EQUAL  &kp PG_DN
+&trans   &kp F16  &kp F17          &kp F18  &kp F19  &kp F20    &trans  &kp DEL  &kp KP_N3   &kp KP_N2      &kp KP_N1  &kp KP_ENTER  &kp END
+&trans   &trans   &kp PRINTSCREEN  &trans   &trans   &trans     &trans  &trans   &trans      &kp BACKSPACE  &kp KP_N0  &kp KP_DOT
+            >;
+
+            label = "NumPad";
+        };
+
+        Adjust {
+            bindings = <
+&to 0  &bt BT_SEL 0  &bt BT_SEL 1    &bt BT_SEL 2  &bt BT_SEL 3  &bt BT_SEL 4    &none  &none  &none  &none       &none      &none        &none
+&none  &bt BT_CLR    &bt BT_CLR_ALL  &none         &none         &none           &none  &none  &none  &none       &none      &none        &none
+&none  &out OUT_USB  &out OUT_BLE    &none         &none         &none           &none  &none  &none  &none       &none      &none        &none
+&none  &none         &none           &none         &none         &none           &none  &none  &none  &sys_reset  &soft_off  &bootloader  &none
+&none  &none         &none           &none         &none         &none           &none  &none  &none  &none       &none      &none
+            >;
+
+            display-name = "layer2";
+            sensor-bindings = <&scroll_encoder>;
+            label = "Adjust";
+        };
+
+        RGB {
+            bindings = <
+&trans  &trans  &trans  &trans  &trans  &trans    &trans  &rgb_ug RGB_TOG                  &rgb_ug RGB_HUI  &rgb_ug RGB_HUD  &rgb_ug RGB_ON                     &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans    &trans  &rgb_ug RGB_EFF                  &rgb_ug RGB_SAI  &rgb_ug RGB_SAD  &rgb_ug RGB_OFF                    &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans    &trans  &rgb_ug RGB_EFR                  &rgb_ug RGB_BRI  &rgb_ug RGB_BRD  &trans                             &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans    &trans  &rgb_ug RGB_COLOR_HSB(0,100,50)  &rgb_ug RGB_SPI  &rgb_ug RGB_SPD  &rgb_ug RGB_COLOR_HSB(154,100,37)  &trans  &trans
+&trans  &trans  &trans  &trans  &trans  &trans    &trans  &trans                           &trans           &trans           &trans                             &trans
+            >;
+
+            label = "RGB";
+        };
+
+        layer_5 {
             bindings = <
 &trans  &trans  &trans  &trans  &trans  &trans    &trans  &trans  &trans  &trans  &trans  &trans  &trans
 &trans  &trans  &trans  &trans  &trans  &trans    &trans  &trans  &trans  &trans  &trans  &trans  &trans
@@ -117,6 +205,3 @@
         };
     };
 };
-
-
-
